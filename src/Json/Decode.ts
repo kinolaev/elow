@@ -281,7 +281,7 @@ export const lazy = <A>(thunk: () => Decoder<A>): Decoder<A> =>
 export const value: Decoder<Value> = value => Ok(value)
 
 export const null_ = <A>(okValue: A): Decoder<A> => value =>
-  value === null ? Ok(okValue) : Err(decodeError("null", value, [], ""))
+  value === null || value === undefined ? Ok(okValue) : Err(decodeError("null", value, [], ""))
 
 export const succeed = <A>(value: A): Decoder<A> => _ => Ok(value)
 
