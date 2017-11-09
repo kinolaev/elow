@@ -120,12 +120,12 @@ export const field = <A>(
   key: string,
   decoder: Decoder<A>
 ): Decoder<A> => value =>
-  typeof value === "object" && value !== null
+  typeof value === "object" && value !== null && value.hasOwnProperty(key)
     ? result.match(decoder(value[key]), {
         Err: error => Err(addDecodeErrorPath([key], error)),
         Ok: Ok
       })
-    : Err(decodeError("object", value, [], ""))
+    : Err(decodeError("object." + key, value, [], ""))
 
 export const at = <A>(
   path: Array<string>,
@@ -134,11 +134,12 @@ export const at = <A>(
   const prevPath: Array<string> = []
   let value = obj
   for (let i = 0, l = path.length; i < l; i++) {
-    if (typeof value === "object" && value !== null) {
-      prevPath.push(path[i])
-      value = value[path[i]]
+    let key = path[i]
+    if (typeof value === "object" && value !== null && value.hasOwnProperty(key)) {
+      prevPath.push(key)
+      value = value[key]
     } else {
-      return Err(decodeError("object", value, prevPath, ""))
+      return Err(decodeError("object." + key, value, prevPath, ""))
     }
   }
   return result.match(decoder(value), {
@@ -148,12 +149,12 @@ export const at = <A>(
 }
 
 export const index = <A>(i: number, decoder: Decoder<A>): Decoder<A> => value =>
-  Array.isArray(value)
+  Array.isArray(value) && i < value.length
     ? result.match(decoder(value[i]), {
         Err: error => Err(addDecodeErrorPath([String(i)], error)),
         Ok: Ok
       })
-    : Err(decodeError("array", value, [], ""))
+    : Err(decodeError("array[" + String(i) + "]", value, [], ""))
 
 export const maybe = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
   result.match(decoder(value), {
@@ -480,6 +481,7 @@ export default {
   map6,
   map7,
   map8,
+  mapTuple,
   mapTuple1,
   mapTuple2,
   mapTuple3,
