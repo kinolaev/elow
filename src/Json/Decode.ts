@@ -311,8 +311,6 @@ const mapTupleN = (...decoders: Array<Decoder<any>>): Decoder<any> => value => {
 }
 
 export const mapTuple: <A>(dA: Decoder<A>) => Decoder<[A]> = mapTupleN
-// @deprecated
-export const mapTuple1 = mapTuple
 export const mapTuple2: <A, B>(
   dA: Decoder<A>,
   dB: Decoder<B>
@@ -482,7 +480,6 @@ export default {
   map7,
   map8,
   mapTuple,
-  mapTuple1,
   mapTuple2,
   mapTuple3,
   mapTuple4,
