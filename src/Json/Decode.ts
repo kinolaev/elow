@@ -131,7 +131,7 @@ export const at = <A>(
   path: Array<string>,
   decoder: Decoder<A>
 ): Decoder<A> => obj => {
-  const prevPath = []
+  const prevPath: Array<string> = []
   let value = obj
   for (let i = 0, l = path.length; i < l; i++) {
     if (typeof value === "object" && value !== null) {
@@ -141,7 +141,10 @@ export const at = <A>(
       return Err(decodeError("object", value, prevPath, ""))
     }
   }
-  return decoder(value)
+  return result.match(decoder(value), {
+    Err: error => Err(addDecodeErrorPath(prevPath, error)),
+    Ok: Ok
+  })
 }
 
 export const index = <A>(i: number, decoder: Decoder<A>): Decoder<A> => value =>
@@ -306,7 +309,9 @@ const mapTupleN = (...decoders: Array<Decoder<any>>): Decoder<any> => value => {
   return Ok(tuple)
 }
 
-export const mapTuple1: <A>(dA: Decoder<A>) => Decoder<[A]> = mapTupleN
+export const mapTuple: <A>(dA: Decoder<A>) => Decoder<[A]> = mapTupleN
+// @deprecated
+export const mapTuple1 = mapTuple
 export const mapTuple2: <A, B>(
   dA: Decoder<A>,
   dB: Decoder<B>
