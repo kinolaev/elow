@@ -1,3 +1,4 @@
+export type Args = ReadonlyArray<unknown>
 export type F0<R> = () => R
 export type F1<A, R> = (a: A) => R
 export type F2<A, B, R> = (a: A, b: B) => R
@@ -307,24 +308,32 @@ export const call8: <A, B, C, D, E, F, G, H, R>(
 
 export const identity = <A>(a: A): A => a
 
-const tupleN = (...args: Array<any>): any => args
+export const tuple = <A extends Args>(...args: A): A => args
+
+/** @deprecated */
 export const tuple0 = []
-export const tuple1: <A>(a: A) => [A] = tupleN
-export const tuple2: <A, B>(a: A, b: B) => [A, B] = tupleN
-export const tuple3: <A, B, C>(a: A, b: B, c: C) => [A, B, C] = tupleN
+/** @deprecated */
+export const tuple1: <A>(a: A) => [A] = tuple
+/** @deprecated */
+export const tuple2: <A, B>(a: A, b: B) => [A, B] = tuple
+/** @deprecated */
+export const tuple3: <A, B, C>(a: A, b: B, c: C) => [A, B, C] = tuple
+/** @deprecated */
 export const tuple4: <A, B, C, D>(
   a: A,
   b: B,
   c: C,
   d: D
-) => [A, B, C, D] = tupleN
+) => [A, B, C, D] = tuple
+/** @deprecated */
 export const tuple5: <A, B, C, D, E>(
   a: A,
   b: B,
   c: C,
   d: D,
   e: E
-) => [A, B, C, D, E] = tupleN
+) => [A, B, C, D, E] = tuple
+/** @deprecated */
 export const tuple6: <A, B, C, D, E, F>(
   a: A,
   b: B,
@@ -332,7 +341,8 @@ export const tuple6: <A, B, C, D, E, F>(
   d: D,
   e: E,
   f: F
-) => [A, B, C, D, E, F] = tupleN
+) => [A, B, C, D, E, F] = tuple
+/** @deprecated */
 export const tuple7: <A, B, C, D, E, F, G>(
   a: A,
   b: B,
@@ -341,7 +351,8 @@ export const tuple7: <A, B, C, D, E, F, G>(
   e: E,
   f: F,
   g: G
-) => [A, B, C, D, E, F, G] = tupleN
+) => [A, B, C, D, E, F, G] = tuple
+/** @deprecated */
 export const tuple8: <A, B, C, D, E, F, G, H>(
   a: A,
   b: B,
@@ -351,7 +362,7 @@ export const tuple8: <A, B, C, D, E, F, G, H>(
   f: F,
   g: G,
   h: H
-) => [A, B, C, D, E, F, G, H] = tupleN
+) => [A, B, C, D, E, F, G, H] = tuple
 
 export type Never = true & false
 export const never = <A>(x: Never): A => {

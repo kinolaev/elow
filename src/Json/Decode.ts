@@ -1,4 +1,4 @@
-import { F1, F2, F3, F4, F5, F6, F7, F8 } from "../Basics"
+import { Args, F1, F2, F3, F4, F5, F6, F7, F8, tuple } from "../Basics"
 import { Maybe } from "../Maybe"
 import { Nothing, Just } from "../Maybe"
 import { Result } from "../Result"
@@ -210,44 +210,48 @@ export const parse = (json: string): Result<string, Value> => {
   }
 }
 
-const mapN = (f: Function, ...decoders: Array<Decoder<any>>): Decoder<any> => (
-  value
-) =>
-  result.match(mapTupleN(...decoders)(value), {
-    Err: Err,
-    Ok: (args) => Ok(f(...args)),
-  })
+export const map = <A extends Args, R>(
+  f: (...args: A) => R,
+  ...decoders: { [I in keyof A]: Decoder<A[I]> }
+): Decoder<R> => (value) => {
+  const l = decoders.length
+  const args = new Array<unknown>(l)
+  for (let i = 0; i < l; i++) {
+    const decoded = decoders[i](value)
+    if (decoded.type === ERR) {
+      return decoded
+    }
+    args[i] = decoded.data[0]
+  }
+  // @ts-ignore
+  return Ok(f(...args))
+}
 
-export const map = <A, R>(f: F1<A, R>, dA: Decoder<A>): Decoder<R> => (value) =>
-  result.match(dA(value), {
-    Err: (error) => Err(error),
-    Ok: (data) => Ok(f(data)),
-  })
-export const mapR = <A, R>(dA: Decoder<A>, f: F1<A, R>): Decoder<R> => (
-  value
-) =>
-  result.match(dA(value), {
-    Err: (error) => Err(error),
-    Ok: (data) => Ok(f(data)),
-  })
+export const mapR = <A, R>(dA: Decoder<A>, f: F1<A, R>): Decoder<R> =>
+  map(f, dA)
+
+/** @deprecated */
 export const map2: <A, B, R>(
   f2: F2<A, B, R>,
   dA: Decoder<A>,
   dB: Decoder<B>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map3: <A, B, C, R>(
   f3: F3<A, B, C, R>,
   dA: Decoder<A>,
   dB: Decoder<B>,
   dC: Decoder<C>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map4: <A, B, C, D, R>(
   f4: F4<A, B, C, D, R>,
   dA: Decoder<A>,
   dB: Decoder<B>,
   dC: Decoder<C>,
   dD: Decoder<D>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map5: <A, B, C, D, E, R>(
   f5: F5<A, B, C, D, E, R>,
   dA: Decoder<A>,
@@ -255,7 +259,8 @@ export const map5: <A, B, C, D, E, R>(
   dC: Decoder<C>,
   dD: Decoder<D>,
   dE: Decoder<E>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map6: <A, B, C, D, E, F, R>(
   f6: F6<A, B, C, D, E, F, R>,
   dA: Decoder<A>,
@@ -264,7 +269,8 @@ export const map6: <A, B, C, D, E, F, R>(
   dD: Decoder<D>,
   dE: Decoder<E>,
   dF: Decoder<F>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map7: <A, B, C, D, E, F, G, R>(
   f7: F7<A, B, C, D, E, F, G, R>,
   dA: Decoder<A>,
@@ -274,7 +280,8 @@ export const map7: <A, B, C, D, E, F, G, R>(
   dE: Decoder<E>,
   dF: Decoder<F>,
   dG: Decoder<G>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
+/** @deprecated */
 export const map8: <A, B, C, D, E, F, G, H, R>(
   f8: F8<A, B, C, D, E, F, G, H, R>,
   dA: Decoder<A>,
@@ -285,7 +292,7 @@ export const map8: <A, B, C, D, E, F, G, H, R>(
   dF: Decoder<F>,
   dG: Decoder<G>,
   dH: Decoder<H>
-) => Decoder<R> = mapN
+) => Decoder<R> = map
 
 export const lazy = <A>(thunk: () => Decoder<A>): Decoder<A> =>
   andThen(thunk, succeed(undefined))
@@ -311,44 +318,37 @@ export const andThen = <A, B>(
     Ok: (data) => f(data)(value),
   })
 
-const mapTupleN = (...decoders: Array<Decoder<any>>): Decoder<any> => (
-  value
-) => {
-  let i = decoders.length
-  const tuple = new Array(i)
-  while (i--) {
-    const decoded = decoders[i](value)
-    if (decoded.type === ERR) {
-      return decoded
-    }
-    tuple[i] = decoded.data[0]
-  }
-  return Ok(tuple)
-}
-
-export const mapTuple: <A>(dA: Decoder<A>) => Decoder<[A]> = mapTupleN
+/** @deprecated */
+export const mapTuple = <A extends Args>(
+  ...decoders: { [I in keyof A]: Decoder<A[I]> }
+): Decoder<A> => map<A, A>(tuple, ...decoders)
+/** @deprecated */
 export const mapTuple2: <A, B>(
   dA: Decoder<A>,
   dB: Decoder<B>
-) => Decoder<[A, B]> = mapTupleN
+) => Decoder<[A, B]> = mapTuple
+/** @deprecated */
 export const mapTuple3: <A, B, C>(
   dA: Decoder<A>,
   dB: Decoder<B>,
   dC: Decoder<C>
-) => Decoder<[A, B, C]> = mapTupleN
+) => Decoder<[A, B, C]> = mapTuple
+/** @deprecated */
 export const mapTuple4: <A, B, C, D>(
   dA: Decoder<A>,
   dB: Decoder<B>,
   dC: Decoder<C>,
   dD: Decoder<D>
-) => Decoder<[A, B, C, D]> = mapTupleN
+) => Decoder<[A, B, C, D]> = mapTuple
+/** @deprecated */
 export const mapTuple5: <A, B, C, D, E>(
   dA: Decoder<A>,
   dB: Decoder<B>,
   dC: Decoder<C>,
   dD: Decoder<D>,
   dE: Decoder<E>
-) => Decoder<[A, B, C, D, E]> = mapTupleN
+) => Decoder<[A, B, C, D, E]> = mapTuple
+/** @deprecated */
 export const mapTuple6: <A, B, C, D, E, F>(
   dA: Decoder<A>,
   dB: Decoder<B>,
@@ -356,7 +356,8 @@ export const mapTuple6: <A, B, C, D, E, F>(
   dD: Decoder<D>,
   dE: Decoder<E>,
   dF: Decoder<F>
-) => Decoder<[A, B, C, D, E, F]> = mapTupleN
+) => Decoder<[A, B, C, D, E, F]> = mapTuple
+/** @deprecated */
 export const mapTuple7: <A, B, C, D, E, F, G>(
   dA: Decoder<A>,
   dB: Decoder<B>,
@@ -365,7 +366,8 @@ export const mapTuple7: <A, B, C, D, E, F, G>(
   dE: Decoder<E>,
   dF: Decoder<F>,
   dG: Decoder<G>
-) => Decoder<[A, B, C, D, E, F, G]> = mapTupleN
+) => Decoder<[A, B, C, D, E, F, G]> = mapTuple
+/** @deprecated */
 export const mapTuple8: <A, B, C, D, E, F, G, H>(
   dA: Decoder<A>,
   dB: Decoder<B>,
@@ -375,7 +377,7 @@ export const mapTuple8: <A, B, C, D, E, F, G, H>(
   dF: Decoder<F>,
   dG: Decoder<G>,
   dH: Decoder<H>
-) => Decoder<[A, B, C, D, E, F, G, H]> = mapTupleN
+) => Decoder<[A, B, C, D, E, F, G, H]> = mapTuple
 
 export type Transformer<A, B> = F1<A, Result<string, B>>
 export type Validator<A> = Transformer<A, A>
