@@ -4,26 +4,32 @@ import { Nothing, Just } from "../Maybe"
 import { Result } from "../Result"
 import result, { ERR, OK, Err, Ok } from "../Result"
 
-export type DecodePath = Array<string>
-export type Value = any
+export type Value =
+  | null
+  | boolean
+  | number
+  | string
+  | Array<Value>
+  | { [key: string]: Value }
+
+export type Decoder<A> = (value: Value) => Decoded<A>
+export type Decoded<A> = Result<DecodeError, A>
+
 export type DecodeError = {
-  path: DecodePath
+  path: Array<string>
   expected: string
   value: Value
   message: string
 }
-export type Decoded<A> = Result<DecodeError, A>
-export type Decoder<A> = (value: Value) => Decoded<A>
-
-const decodeError = (
+const DecodeError = (
   expected: string,
   value: Value,
-  path: DecodePath,
+  path: Array<string>,
   message: string
 ): DecodeError => ({ expected, value, path, message })
 
 const addDecodeErrorPath = (
-  path: DecodePath,
+  path: Array<string>,
   error: DecodeError
 ): DecodeError => ({ ...error, path: path.concat(error.path) })
 
@@ -34,23 +40,26 @@ const getErrorMessage = (error: DecodeError): string =>
 const stringify = (value: Value) =>
   typeof value === "string" ? '"' + value + '"' : JSON.stringify(value)
 
+const isJsonObject = (value: Value): value is { [key: string]: Value } =>
+  typeof value === "object" && value !== null
+
 export const string: Decoder<string> = value =>
   typeof value === "string"
     ? Ok(value)
-    : Err(decodeError("string", value, [], ""))
+    : Err(DecodeError("string", value, [], ""))
 
 export const boolean: Decoder<boolean> = value =>
   typeof value === "boolean"
     ? Ok(value)
-    : Err(decodeError("boolean", value, [], ""))
+    : Err(DecodeError("boolean", value, [], ""))
 
 export const number: Decoder<number> = value =>
   typeof value === "number"
     ? Ok(value)
-    : Err(decodeError("number", value, [], ""))
+    : Err(DecodeError("number", value, [], ""))
 
 export const date: Decoder<Date> = value =>
-  value instanceof Date ? Ok(value) : Err(decodeError("date", value, [], ""))
+  value instanceof Date ? Ok(value) : Err(DecodeError("date", value, [], ""))
 
 export const nullable = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
   value === null || value === undefined
@@ -73,13 +82,13 @@ export const list = <A>(decoder: Decoder<A>): Decoder<Array<A>> => value => {
     }
     return Ok(result)
   }
-  return Err(decodeError("array", value, [], ""))
+  return Err(DecodeError("array", value, [], ""))
 }
 
 export const dict = <A>(
   decoder: Decoder<A>
 ): Decoder<{ [key: string]: A }> => value => {
-  if (typeof value === "object" && value !== null) {
+  if (isJsonObject(value)) {
     const keys = Object.keys(value)
     let i = keys.length
     const result: { [key: string]: A } = {}
@@ -93,13 +102,13 @@ export const dict = <A>(
     }
     return Ok(result)
   }
-  return Err(decodeError("object", value, [], ""))
+  return Err(DecodeError("object", value, [], ""))
 }
 
 export const keyValuePairs = <A>(
   decoder: Decoder<A>
 ): Decoder<Array<[string, A]>> => value => {
-  if (typeof value === "object" && value !== null) {
+  if (isJsonObject(value)) {
     const keys = Object.keys(value)
     let i = keys.length
     const result = new Array(i)
@@ -113,19 +122,19 @@ export const keyValuePairs = <A>(
     }
     return Ok(result)
   }
-  return Err(decodeError("object", value, [], ""))
+  return Err(DecodeError("object", value, [], ""))
 }
 
 export const field = <A>(
   key: string,
   decoder: Decoder<A>
 ): Decoder<A> => value =>
-  typeof value === "object" && value !== null && value.hasOwnProperty(key)
+  isJsonObject(value) && value.hasOwnProperty(key)
     ? result.match(decoder(value[key]), {
         Err: error => Err(addDecodeErrorPath([key], error)),
-        Ok: Ok
+        Ok: value => Ok(value)
       })
-    : Err(decodeError("object." + key, value, [], ""))
+    : Err(DecodeError("object." + key, value, [], ""))
 
 export const at = <A>(
   path: Array<string>,
@@ -135,16 +144,16 @@ export const at = <A>(
   let value = obj
   for (let i = 0, l = path.length; i < l; i++) {
     let key = path[i]
-    if (typeof value === "object" && value !== null && value.hasOwnProperty(key)) {
+    if (isJsonObject(value) && value.hasOwnProperty(key)) {
       prevPath.push(key)
       value = value[key]
     } else {
-      return Err(decodeError("object." + key, value, prevPath, ""))
+      return Err(DecodeError("object." + key, value, prevPath, ""))
     }
   }
   return result.match(decoder(value), {
     Err: error => Err(addDecodeErrorPath(prevPath, error)),
-    Ok: Ok
+    Ok: value => Ok(value)
   })
 }
 
@@ -152,9 +161,9 @@ export const index = <A>(i: number, decoder: Decoder<A>): Decoder<A> => value =>
   Array.isArray(value) && i < value.length
     ? result.match(decoder(value[i]), {
         Err: error => Err(addDecodeErrorPath([String(i)], error)),
-        Ok: Ok
+        Ok: value => Ok(value)
       })
-    : Err(decodeError("array[" + String(i) + "]", value, [], ""))
+    : Err(DecodeError("array[" + String(i) + "]", value, [], ""))
 
 export const maybe = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
   result.match(decoder(value), {
@@ -165,7 +174,7 @@ export const maybe = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
 export const oneOf = <A>(
   ...decoders: Array<Decoder<A>>
 ): Decoder<A> => value => {
-  let lastDecodeError = decodeError("Value", value, [], "no one")
+  let lastDecodeError = DecodeError("Value", value, [], "no one")
   for (let i = 0, l = decoders.length; i < l; i++) {
     const decoded = decoders[i](value)
     if (decoded.type === OK) {
@@ -184,7 +193,7 @@ export const decodeString = <A>(
   decoder: Decoder<A>
 ): Decoded<A> =>
   result.match(parse(json), {
-    Err: error => Err(decodeError("Value", json, [], error)),
+    Err: error => Err(DecodeError("Value", json, [], error)),
     Ok: value => decodeValue(value, decoder)
   })
 
@@ -210,12 +219,12 @@ const mapN = (
 
 export const map = <A, R>(f: F1<A, R>, dA: Decoder<A>): Decoder<R> => value =>
   result.match(dA(value), {
-    Err: Err,
+    Err: error => Err(error),
     Ok: data => Ok(f(data))
   })
 export const mapR = <A, R>(dA: Decoder<A>, f: F1<A, R>): Decoder<R> => value =>
   result.match(dA(value), {
-    Err: Err,
+    Err: error => Err(error),
     Ok: data => Ok(f(data))
   })
 export const map2: <A, B, R>(
@@ -281,19 +290,19 @@ export const lazy = <A>(thunk: () => Decoder<A>): Decoder<A> =>
 export const value: Decoder<Value> = value => Ok(value)
 
 export const null_ = <A>(okValue: A): Decoder<A> => value =>
-  value === null || value === undefined ? Ok(okValue) : Err(decodeError("null", value, [], ""))
+  value === null || value === undefined ? Ok(okValue) : Err(DecodeError("null", value, [], ""))
 
 export const succeed = <A>(value: A): Decoder<A> => _ => Ok(value)
 
 export const fail = <A>(message: string): Decoder<A> => value =>
-  Err(decodeError("", value, [], message))
+  Err(DecodeError("", value, [], message))
 
 export const andThen = <A, B>(
   f: F1<A, Decoder<B>>,
   decoder: Decoder<A>
 ): Decoder<B> => value =>
   result.match(decoder(value), {
-    Err: Err,
+    Err: error => Err(error),
     Ok: data => f(data)(value)
   })
 
