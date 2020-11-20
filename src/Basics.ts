@@ -68,8 +68,10 @@ const curryNHelper = (l: number, f: Function, args: Array<any>) =>
   args.length === 0
     ? (...next: Array<any>) => curryNHelper(l, f, next)
     : args.length < l
-      ? (...next: Array<any>) => curryNHelper(l, f, args.concat(next))
-      : args.length > l ? f(...args.slice(0, l)) : f(...args)
+    ? (...next: Array<any>) => curryNHelper(l, f, args.concat(next))
+    : args.length > l
+    ? f(...args.slice(0, l))
+    : f(...args)
 export const curry2: <A, B, R>(f2: F2<A, B, R>) => CF2<A, B, R> = curryN(2)
 export const curry3: <A, B, C, R>(
   f3: F3<A, B, C, R>

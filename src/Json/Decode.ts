@@ -43,33 +43,35 @@ const stringify = (value: Value) =>
 const isJsonObject = (value: Value): value is { [key: string]: Value } =>
   typeof value === "object" && value !== null
 
-export const string: Decoder<string> = value =>
+export const string: Decoder<string> = (value) =>
   typeof value === "string"
     ? Ok(value)
     : Err(DecodeError("string", value, [], ""))
 
-export const boolean: Decoder<boolean> = value =>
+export const boolean: Decoder<boolean> = (value) =>
   typeof value === "boolean"
     ? Ok(value)
     : Err(DecodeError("boolean", value, [], ""))
 
-export const number: Decoder<number> = value =>
+export const number: Decoder<number> = (value) =>
   typeof value === "number"
     ? Ok(value)
     : Err(DecodeError("number", value, [], ""))
 
-export const date: Decoder<Date> = value =>
+export const date: Decoder<Date> = (value) =>
   value instanceof Date ? Ok(value) : Err(DecodeError("date", value, [], ""))
 
-export const nullable = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
+export const nullable = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => (
+  value
+) =>
   value === null || value === undefined
     ? Ok(Nothing)
     : result.match(decoder(value), {
         Err: Err,
-        Ok: value => Ok(Just(value))
+        Ok: (value) => Ok(Just(value)),
       })
 
-export const list = <A>(decoder: Decoder<A>): Decoder<Array<A>> => value => {
+export const list = <A>(decoder: Decoder<A>): Decoder<Array<A>> => (value) => {
   if (Array.isArray(value)) {
     let i = value.length
     const result: Array<A> = new Array(i)
@@ -85,9 +87,9 @@ export const list = <A>(decoder: Decoder<A>): Decoder<Array<A>> => value => {
   return Err(DecodeError("array", value, [], ""))
 }
 
-export const dict = <A>(
-  decoder: Decoder<A>
-): Decoder<{ [key: string]: A }> => value => {
+export const dict = <A>(decoder: Decoder<A>): Decoder<{ [key: string]: A }> => (
+  value
+) => {
   if (isJsonObject(value)) {
     const keys = Object.keys(value)
     let i = keys.length
@@ -107,7 +109,7 @@ export const dict = <A>(
 
 export const keyValuePairs = <A>(
   decoder: Decoder<A>
-): Decoder<Array<[string, A]>> => value => {
+): Decoder<Array<[string, A]>> => (value) => {
   if (isJsonObject(value)) {
     const keys = Object.keys(value)
     let i = keys.length
@@ -125,21 +127,19 @@ export const keyValuePairs = <A>(
   return Err(DecodeError("object", value, [], ""))
 }
 
-export const field = <A>(
-  key: string,
-  decoder: Decoder<A>
-): Decoder<A> => value =>
+export const field = <A>(key: string, decoder: Decoder<A>): Decoder<A> => (
+  value
+) =>
   isJsonObject(value) && value.hasOwnProperty(key)
     ? result.match(decoder(value[key]), {
-        Err: error => Err(addDecodeErrorPath([key], error)),
-        Ok: value => Ok(value)
+        Err: (error) => Err(addDecodeErrorPath([key], error)),
+        Ok: (value) => Ok(value),
       })
     : Err(DecodeError("object." + key, value, [], ""))
 
-export const at = <A>(
-  path: Array<string>,
-  decoder: Decoder<A>
-): Decoder<A> => obj => {
+export const at = <A>(path: Array<string>, decoder: Decoder<A>): Decoder<A> => (
+  obj
+) => {
   const prevPath: Array<string> = []
   let value = obj
   for (let i = 0, l = path.length; i < l; i++) {
@@ -152,28 +152,30 @@ export const at = <A>(
     }
   }
   return result.match(decoder(value), {
-    Err: error => Err(addDecodeErrorPath(prevPath, error)),
-    Ok: value => Ok(value)
+    Err: (error) => Err(addDecodeErrorPath(prevPath, error)),
+    Ok: (value) => Ok(value),
   })
 }
 
-export const index = <A>(i: number, decoder: Decoder<A>): Decoder<A> => value =>
+export const index = <A>(i: number, decoder: Decoder<A>): Decoder<A> => (
+  value
+) =>
   Array.isArray(value) && i < value.length
     ? result.match(decoder(value[i]), {
-        Err: error => Err(addDecodeErrorPath([String(i)], error)),
-        Ok: value => Ok(value)
+        Err: (error) => Err(addDecodeErrorPath([String(i)], error)),
+        Ok: (value) => Ok(value),
       })
     : Err(DecodeError("array[" + String(i) + "]", value, [], ""))
 
-export const maybe = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => value =>
+export const maybe = <A>(decoder: Decoder<A>): Decoder<Maybe<A>> => (value) =>
   result.match(decoder(value), {
-    Err: _ => Ok(Nothing),
-    Ok: value => Ok(Just(value))
+    Err: (_) => Ok(Nothing),
+    Ok: (value) => Ok(Just(value)),
   })
 
-export const oneOf = <A>(
-  ...decoders: Array<Decoder<A>>
-): Decoder<A> => value => {
+export const oneOf = <A>(...decoders: Array<Decoder<A>>): Decoder<A> => (
+  value
+) => {
   let lastDecodeError = DecodeError("Value", value, [], "no one")
   for (let i = 0, l = decoders.length; i < l; i++) {
     const decoded = decoders[i](value)
@@ -193,8 +195,8 @@ export const decodeString = <A>(
   decoder: Decoder<A>
 ): Decoded<A> =>
   result.match(parse(json), {
-    Err: error => Err(DecodeError("Value", json, [], error)),
-    Ok: value => decodeValue(value, decoder)
+    Err: (error) => Err(DecodeError("Value", json, [], error)),
+    Ok: (value) => decodeValue(value, decoder),
   })
 
 export const decodeErrorToString = (error: DecodeError): string =>
@@ -208,24 +210,25 @@ export const parse = (json: string): Result<string, Value> => {
   }
 }
 
-const mapN = (
-  f: Function,
-  ...decoders: Array<Decoder<any>>
-): Decoder<any> => value =>
+const mapN = (f: Function, ...decoders: Array<Decoder<any>>): Decoder<any> => (
+  value
+) =>
   result.match(mapTupleN(...decoders)(value), {
     Err: Err,
-    Ok: args => Ok(f(...args))
+    Ok: (args) => Ok(f(...args)),
   })
 
-export const map = <A, R>(f: F1<A, R>, dA: Decoder<A>): Decoder<R> => value =>
+export const map = <A, R>(f: F1<A, R>, dA: Decoder<A>): Decoder<R> => (value) =>
   result.match(dA(value), {
-    Err: error => Err(error),
-    Ok: data => Ok(f(data))
+    Err: (error) => Err(error),
+    Ok: (data) => Ok(f(data)),
   })
-export const mapR = <A, R>(dA: Decoder<A>, f: F1<A, R>): Decoder<R> => value =>
+export const mapR = <A, R>(dA: Decoder<A>, f: F1<A, R>): Decoder<R> => (
+  value
+) =>
   result.match(dA(value), {
-    Err: error => Err(error),
-    Ok: data => Ok(f(data))
+    Err: (error) => Err(error),
+    Ok: (data) => Ok(f(data)),
   })
 export const map2: <A, B, R>(
   f2: F2<A, B, R>,
@@ -287,26 +290,30 @@ export const map8: <A, B, C, D, E, F, G, H, R>(
 export const lazy = <A>(thunk: () => Decoder<A>): Decoder<A> =>
   andThen(thunk, succeed(undefined))
 
-export const value: Decoder<Value> = value => Ok(value)
+export const value: Decoder<Value> = (value) => Ok(value)
 
-export const null_ = <A>(okValue: A): Decoder<A> => value =>
-  value === null || value === undefined ? Ok(okValue) : Err(DecodeError("null", value, [], ""))
+export const null_ = <A>(okValue: A): Decoder<A> => (value) =>
+  value === null || value === undefined
+    ? Ok(okValue)
+    : Err(DecodeError("null", value, [], ""))
 
-export const succeed = <A>(value: A): Decoder<A> => _ => Ok(value)
+export const succeed = <A>(value: A): Decoder<A> => (_) => Ok(value)
 
-export const fail = <A>(message: string): Decoder<A> => value =>
+export const fail = <A>(message: string): Decoder<A> => (value) =>
   Err(DecodeError("", value, [], message))
 
 export const andThen = <A, B>(
   f: F1<A, Decoder<B>>,
   decoder: Decoder<A>
-): Decoder<B> => value =>
+): Decoder<B> => (value) =>
   result.match(decoder(value), {
-    Err: error => Err(error),
-    Ok: data => f(data)(value)
+    Err: (error) => Err(error),
+    Ok: (data) => f(data)(value),
   })
 
-const mapTupleN = (...decoders: Array<Decoder<any>>): Decoder<any> => value => {
+const mapTupleN = (...decoders: Array<Decoder<any>>): Decoder<any> => (
+  value
+) => {
   let i = decoders.length
   const tuple = new Array(i)
   while (i--) {
@@ -454,8 +461,8 @@ const transformHelp = (
   transformers.length === 0
     ? succeed(value)
     : result.match(transformers[0](value), {
-        Err: message => fail(message),
-        Ok: value => transformHelp(transformers.slice(1), value)
+        Err: (message) => fail(message),
+        Ok: (value) => transformHelp(transformers.slice(1), value),
       })
 
 export const validate = <A>(
@@ -510,5 +517,5 @@ export default {
   transform6,
   transform7,
   transform8,
-  validate
+  validate,
 }

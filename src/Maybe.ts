@@ -5,11 +5,11 @@ export type Maybe<A> = null | A
 export const Nothing: Maybe<any> = null
 export const Just = <A>(a: A): Maybe<A> => a
 
-type Cases<A, R> = { Nothing: F0<R>, Just: F1<A, R> }
+type Cases<A, R> = { Nothing: F0<R>; Just: F1<A, R> }
 export const match = <A, R>(v: Maybe<A>, c: Cases<A, R>): R =>
   v === null ? c.Nothing() : c.Just(v)
 
-export const caseOf = <A, R>(c: Cases<A, R>): F1<Maybe<A>, R> => v =>
+export const caseOf = <A, R>(c: Cases<A, R>): F1<Maybe<A>, R> => (v) =>
   match(v, c)
 
 export const nothingThunk = (): Maybe<any> => Nothing
@@ -31,5 +31,5 @@ export default {
   nothingThunk,
   withDefault,
   map,
-  andThen
+  andThen,
 }
