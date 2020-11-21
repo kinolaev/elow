@@ -1,5 +1,4 @@
-import { F0, F1 } from "./Basics"
-import { identity, compose2 } from "./Basics"
+import { F0, F1, composeL, identity } from "./Basics"
 
 export type Maybe<A> = null | A
 export const Nothing: Maybe<any> = null
@@ -18,7 +17,7 @@ export const withDefault = <A>(fallback: A, v: Maybe<A>): A =>
   match(v, { Nothing: () => fallback, Just: identity })
 
 export const map = <A, B>(f: F1<A, B>, v: Maybe<A>): Maybe<B> =>
-  match(v, { Nothing: nothingThunk, Just: compose2(Just, f) })
+  match(v, { Nothing: nothingThunk, Just: composeL(Just, f) })
 
 export const andThen = <A, B>(f: F1<A, Maybe<B>>, v: Maybe<A>): Maybe<B> =>
   match(v, { Nothing: nothingThunk, Just: f })
